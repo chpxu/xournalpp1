@@ -15,6 +15,24 @@
 
 namespace xoj::util {
 /**
+ * @brief Placeholder type for C-lib smart pointer wrappers' contructors and reset methods: adopt the element
+ */
+constexpr static struct Adopt {
+} adopt = Adopt();
+
+/**
+ * @brief Placeholder type for C-lib smart pointer wrappers' contructors and reset methods: add a ref to the element
+ */
+constexpr static struct Ref {
+} ref = Ref();
+
+/**
+ * @brief Placeholder type for C-lib smart pointer wrappers' contructors and reset methods: ref_sink the element
+ */
+constexpr static struct RefSink {
+} refsink = RefSink();
+
+/**
  * @brief Simple template class for RAII smart pointer (aimed at Cairo/GTK/Poppler ref-counting classes)
  * @param T The wrapper will store a pointer of type T
  * @param H Handler class containing at least
@@ -32,13 +50,14 @@ public:
     using handler_type = H;
 
 private:
-    static auto safeRef(T* ptr) -> T* { return ptr ? H::ref(ptr) : ptr; }
+    static auto safeAdopt(T* ptr) -> T* { return ptr ? H::adopt(ptr) : nullptr; }
+    static auto safeRef(T* ptr) -> T* { return ptr ? H::ref(ptr) : nullptr; }
     static auto safeUnref(T* ptr) -> void {
         if (ptr) {
             H::unref(ptr);
         }
     }
-    static auto safeSinkRef(T* ptr) -> T* { return ptr ? H::sink_ref(ptr) : ptr; }
+    static auto safeRefSink(T* ptr) -> T* { return ptr ? H::ref_sink(ptr) : nullptr; }
     static auto safeReset(T*& ptr, T* val) -> void { safeUnref(std::exchange(ptr, val)); }
 
 public:
@@ -60,30 +79,22 @@ public:
         return *this;
     }
 
-    constexpr static struct Adopt {
-    } adopt = Adopt();
-    constexpr static struct Ref {
-    } ref = Ref();
-    constexpr static struct RefSink {
-    } refsink = RefSink();
+    explicit CLibrariesSPtr(T* p, Adopt): p(safeAdopt(p)) {}
+    explicit CLibrariesSPtr(T* p, Ref): p(safeRef(p)) {}
+    explicit CLibrariesSPtr(T* p, RefSink): p(safeRefSink(p)) {}
 
-    CLibrariesSPtr(T* p, Adopt = adopt): p(H::adopt(p)) {}
-    CLibrariesSPtr(T* p, Ref): p(safeRef(p)) {}
-    CLibrariesSPtr(T* p, RefSink): p(safeSinkRef(p)) {}
-
-    void reset(T* other = nullptr, Adopt = adopt) { safeReset(p, other); }
+    void reset() { safeReset(p, nullptr); }
+    void reset(T* other, Adopt) { safeReset(p, safeAdopt(other)); }
     void reset(T* other, Ref) { safeReset(p, safeRef(other)); }
     void reset(T* other, RefSink) { safeReset(p, safeRefSink(other)); }
 
     operator bool() const { return p != nullptr; }
 
-    T* get() { return p; }
-    const T* get() const { return p; }
+    T* get() const { return p; }
 
     T* release() { return std::exchange(p, nullptr); }
 
-    T* operator->() { return p; }
-    const T* operator->() const { return p; }
+    T* operator->() const { return p; }
 
     void swap(CLibrariesSPtr& other) { std::swap(p, other.p); }
 

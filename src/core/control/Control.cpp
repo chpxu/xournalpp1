@@ -75,6 +75,7 @@
 #include "undo/AddUndoAction.h"                                  // for AddU...
 #include "undo/InsertDeletePageUndoAction.h"                     // for Inse...
 #include "undo/InsertUndoAction.h"                               // for Inse...
+#include "undo/MoveSelectionToLayerUndoAction.h"                 // for Move...
 #include "undo/UndoAction.h"                                     // for Undo...
 #include "util/Color.h"                                          // for oper...
 #include "util/PathUtil.h"                                       // for clea...
@@ -516,6 +517,9 @@ void Control::actionPerformed(ActionType type, ActionGroup group, GdkEvent* even
         case ACTION_NEW_PAGE_BEFORE:
             insertNewPage(getCurrentPageNo());
             break;
+        case ACTION_DUPLICATE_PAGE:
+            duplicatePage();
+            break;
         case ACTION_NEW_PAGE_AFTER:
             insertNewPage(getCurrentPageNo() + 1);
             break;
@@ -536,6 +540,18 @@ void Control::actionPerformed(ActionType type, ActionGroup group, GdkEvent* even
             break;
         case ACTION_PAPER_BACKGROUND_COLOR:
             changePageBackgroundColor();
+            break;
+        case ACTION_MOVE_SELECTION_LAYER_UP:
+            // moveSelectionToLayer takes layer number (layerid - 1) not id 
+            // therefor the new layer is "layerid - 1 + 1"
+            moveSelectionToLayer(getCurrentPage()->getSelectedLayerId());
+            break;
+        case ACTION_MOVE_SELECTION_LAYER_DOWN:
+            if(this->getLayerController()->getCurrentLayerId() >= 2) {
+                // moveSelectionToLayer takes layer number (layerid - 1) not id
+                // therefor the new layer is "layerid - 1 - 1"
+                moveSelectionToLayer(getCurrentPage()->getSelectedLayerId() - 2);
+            }
             break;
 
             // Menu Tools
@@ -1375,6 +1391,16 @@ void Control::deletePage() {
     this->win->getXournal()->forceUpdatePagenumbers();
 }
 
+void Control::duplicatePage() {
+    auto page = getCurrentPage();
+    if (!page) {
+        return;
+    }
+    auto pageCopy = std::make_shared<XojPage>(*page);
+
+    insertPage(pageCopy, getCurrentPageNo() + 1);
+}
+
 void Control::insertNewPage(size_t position) { pageBackgroundChangeController->insertNewPage(position); }
 
 void Control::appendNewPdfPages() {
@@ -1786,6 +1812,7 @@ void Control::selectTool(ToolType type) {
     if (oldTool && win
                 && isSelectToolType(type)
                 && oldTool->getToolType() == ToolType::TOOL_TEXT
+                && this->win->getXournal()->getTextEditor()
                 && !(this->win->getXournal()->getTextEditor()->getText()->getText().empty())) {
         auto xournal = this->win->getXournal();
         Text* textobj = xournal->getTextEditor()->getText();
@@ -2977,6 +3004,27 @@ void Control::clipboardPasteXournal(ObjectInputStream& in) {
             delete selection;
         }
     }
+}
+
+void Control::moveSelectionToLayer(size_t layerNo) {
+    PageRef currentP = getCurrentPage();
+    if (layerNo >= currentP->getLayerCount()) {
+        return;
+    }
+    auto selection = getWindow()->getXournal()->getSelection();
+    if (!selection) {
+        return;
+    }
+
+    auto* oldLayer = currentP->getSelectedLayer();
+    auto* newLayer = currentP->getLayers()->at(layerNo);
+    auto moveSelUndo = std::make_unique<MoveSelectionToLayerUndoAction>(currentP, getLayerController(), oldLayer, currentP->getSelectedLayerId() - 1, layerNo);
+    for (auto* e : selection->getElements()) {
+        moveSelUndo->addElement(newLayer, e, newLayer->indexOf(e));
+    }
+    undoRedo->addUndoAction(std::move(moveSelUndo));
+
+    getLayerController()->switchToLay(layerNo + 1, /*hideShow=*/false, /*clearSelection=*/false);
 }
 
 void Control::deleteSelection() {

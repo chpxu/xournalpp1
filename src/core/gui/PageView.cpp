@@ -370,31 +370,34 @@ auto XojPageView::onButtonPressEvent(const PositionInputData& pos) -> bool {
     } else if (h->getToolType() == TOOL_VERTICAL_SPACE) {
         if (this->verticalSpace) {
             control->getUndoRedoHandler()->addUndoAction(this->verticalSpace->finalize());
-            this->getXournal()->getControl()->getZoomControl()->removeZoomListener(this->verticalSpace);
-            delete this->verticalSpace;
+            this->verticalSpace.reset();
         }
-        auto* window = gtk_widget_get_window(xournal->getWidget());
         auto* zoomControl = this->getXournal()->getControl()->getZoomControl();
-        this->verticalSpace =
-                new VerticalToolHandler(this, this->page, this->settings, y, pos.isControlDown(), zoomControl, window);
-        zoomControl->addZoomListener(this->verticalSpace);
+        this->verticalSpace = std::make_unique<VerticalToolHandler>(this->page, this->settings, y, pos.isControlDown());
+        this->overlayViews.emplace_back(this->verticalSpace->createView(this, zoomControl, this->settings));
     } else if (h->getToolType() == TOOL_SELECT_RECT || h->getToolType() == TOOL_SELECT_REGION ||
                h->getToolType() == TOOL_PLAY_OBJECT || h->getToolType() == TOOL_SELECT_OBJECT ||
                h->getToolType() == TOOL_SELECT_PDF_TEXT_LINEAR || h->getToolType() == TOOL_SELECT_PDF_TEXT_RECT) {
         if (h->getToolType() == TOOL_SELECT_RECT) {
-            if (this->selection) {
-                delete this->selection;
-                this->selection = nullptr;
-                repaintPage();
+            if (!selection) {
+                this->selection = std::make_unique<RectSelection>(x, y);
+                this->overlayViews.emplace_back(std::make_unique<xoj::view::SelectionView>(
+                        this->selection.get(), this, this->settings->getSelectionColor()));
+            } else {
+                assert(settings->getInputSystemTPCButtonEnabled() &&
+                       "the selection has already been created by a stylus button press while the stylus was "
+                       "hovering!");
             }
-            this->selection = new RectSelection(x, y, this);
         } else if (h->getToolType() == TOOL_SELECT_REGION) {
-            if (this->selection) {
-                delete this->selection;
-                this->selection = nullptr;
-                repaintPage();
+            if (!selection) {
+                this->selection = std::make_unique<RegionSelect>(x, y);
+                this->overlayViews.emplace_back(std::make_unique<xoj::view::SelectionView>(
+                        this->selection.get(), this, this->settings->getSelectionColor()));
+            } else {
+                assert(settings->getInputSystemTPCButtonEnabled() &&
+                       "the selection has already been created by a stylus button press while the stylus was "
+                       "hovering!");
             }
-            this->selection = new RegionSelect(x, y, this);
         } else if (h->getToolType() == TOOL_SELECT_PDF_TEXT_LINEAR || h->getToolType() == TOOL_SELECT_PDF_TEXT_RECT) {
             // so if we selected something && the pdf selection toolbox is hidden && we hit within the selection
             // we could call the pdf floating toolbox again
@@ -591,12 +594,15 @@ void XojPageView::onSequenceCancelEvent() {
 }
 
 auto XojPageView::showPdfToolbox(const PositionInputData& pos) -> void {
+    // Compute coords of the canvas relative to the application window origin.
     gint wx = 0, wy = 0;
     GtkWidget* widget = xournal->getWidget();
     gtk_widget_translate_coordinates(widget, gtk_widget_get_toplevel(widget), 0, 0, &wx, &wy);
 
-    wx += static_cast<gint>(std::lround(pos.x)) + this->getX();
-    wy += static_cast<gint>(std::lround(pos.y)) + this->getY();
+    // Add the position of the current page view widget (relative to canvas origin)
+    // and add the input position (relative to the current page view widget).
+    wx += this->getX() + static_cast<gint>(std::lround(pos.x));
+    wy += this->getY() + static_cast<gint>(std::lround(pos.y));
 
     auto* pdfToolbox = this->xournal->getControl()->getWindow()->getPdfToolbox();
     pdfToolbox->show(wx, wy);
@@ -651,9 +657,7 @@ auto XojPageView::onButtonReleaseEvent(const PositionInputData& pos) -> bool {
 
     if (this->verticalSpace) {
         control->getUndoRedoHandler()->addUndoAction(this->verticalSpace->finalize());
-        this->getXournal()->getControl()->getZoomControl()->removeZoomListener(this->verticalSpace);
-        delete this->verticalSpace;
-        this->verticalSpace = nullptr;
+        this->verticalSpace.reset();
     }
 
     auto* pdfToolbox = control->getWindow()->getPdfToolbox();
@@ -666,20 +670,15 @@ auto XojPageView::onButtonReleaseEvent(const PositionInputData& pos) -> bool {
 
     if (this->selection) {
         if (this->selection->finalize(this->page)) {
-            xournal->setSelection(new EditSelection(control->getUndoRedoHandler(), this->selection, this));
-            delete this->selection;
-            this->selection = nullptr;
+            xournal->setSelection(new EditSelection(control->getUndoRedoHandler(), this->selection.get(), this));
         } else {
             double zoom = xournal->getZoom();
             if (this->selection->userTapped(zoom)) {
                 SelectObject select(this);
                 select.at(pos.x / zoom, pos.y / zoom);
             }
-            delete this->selection;
-            this->selection = nullptr;
-
-            repaintPage();
         }
+        this->selection.reset();
     } else if (this->textEditor) {
         this->textEditor->mouseReleased();
     }
@@ -760,12 +759,16 @@ void XojPageView::repaintArea(double x1, double y1, double x2, double y2) const 
 void XojPageView::flagDirtyRegion(const Range& rg) const { repaintArea(rg.minX, rg.minY, rg.maxX, rg.maxY); }
 
 void XojPageView::drawAndDeleteToolView(xoj::view::ToolView* v, const Range& rg) {
-    if (v->isViewOf(this->inputHandler)) {
+    if (v->isViewOf(this->inputHandler) || v->isViewOf(this->verticalSpace.get())) {
         // Draw the inputHandler's view onto the page buffer.
         std::lock_guard lock(this->drawingMutex);
-        xoj::util::CairoSPtr cr(cairo_create(this->crBuffer.get()));
+        xoj::util::CairoSPtr cr(cairo_create(this->crBuffer.get()), xoj::util::adopt);
         v->drawWithoutDrawingAids(cr.get());
     }
+    this->deleteOverlayView(v, rg);
+}
+
+void XojPageView::deleteOverlayView(xoj::view::OverlayView* v, const Range& rg) {
     this->deleteView(v);
     this->flagDirtyRegion(rg);
 }
@@ -932,16 +935,8 @@ auto XojPageView::paintPage(cairo_t* cr, GdkRectangle* rect) -> bool {
     xoj::util::CairoSaveGuard saveGuard(cr);
     cairo_scale(cr, zoom, zoom);
 
-    if (this->verticalSpace) {
-        this->verticalSpace->paint(cr);
-    }
-
     if (this->textEditor) {
         this->textEditor->paint(cr, zoom);
-    }
-
-    if (this->selection) {
-        this->selection->paint(cr, zoom);
     }
 
     auto* pdfToolbox = this->xournal->getControl()->getWindow()->getPdfToolbox();

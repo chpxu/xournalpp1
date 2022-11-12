@@ -152,6 +152,10 @@ auto ActionType_fromString(const string& value) -> ActionType {
         return ACTION_NEW_PAGE_BEFORE;
     }
 
+    if (value == "ACTION_DUPLICATE_PAGE") {
+        return ACTION_DUPLICATE_PAGE;
+    }
+
     if (value == "ACTION_NEW_PAGE_AFTER") {
         return ACTION_NEW_PAGE_AFTER;
     }
@@ -186,6 +190,14 @@ auto ActionType_fromString(const string& value) -> ActionType {
 
     if (value == "ACTION_RENAME_LAYER") {
         return ACTION_RENAME_LAYER;
+    }
+
+    if (value == "ACTION_MOVE_SELECTION_LAYER_UP") {
+        return ACTION_MOVE_SELECTION_LAYER_UP;
+    }
+
+    if (value == "ACTION_MOVE_SELECTION_LAYER_DOWN") {
+        return ACTION_MOVE_SELECTION_LAYER_DOWN;
     }
 
     if (value == "ACTION_PAPER_FORMAT") {
@@ -778,6 +790,10 @@ auto ActionType_toString(ActionType value) -> string {
         return "ACTION_NEW_PAGE_BEFORE";
     }
 
+    if (value == ACTION_DUPLICATE_PAGE) {
+        return "ACTION_DUPLICATE_PAGE";
+    }
+
     if (value == ACTION_NEW_PAGE_AFTER) {
         return "ACTION_NEW_PAGE_AFTER";
     }
@@ -812,6 +828,14 @@ auto ActionType_toString(ActionType value) -> string {
 
     if (value == ACTION_RENAME_LAYER) {
         return "ACTION_RENAME_LAYER";
+    }
+
+    if (value == ACTION_MOVE_SELECTION_LAYER_UP) {
+        return "ACTION_MOVE_SELECTION_LAYER_UP";
+    }
+
+    if (value == ACTION_MOVE_SELECTION_LAYER_DOWN) {
+        return "ACTION_MOVE_SELECTION_LAYER_DOWN";
     }
 
     if (value == ACTION_PAPER_FORMAT) {

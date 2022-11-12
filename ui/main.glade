@@ -467,6 +467,32 @@
                           </object>
                         </child>
                         <child>
+                          <object class="GtkSeparatorMenuItem" id="separatormenuitem19">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkMenuItem" id="menuEditMoveSelectionLayerUp">
+                            <property name="name">menuEditMoveSelectionLayerUp</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="label" translatable="yes">Move Selection Layer Up</property>
+                            <property name="use-underline">True</property>
+                            <signal name="activate" handler="ACTION_MOVE_SELECTION_LAYER_UP" swapped="no"/>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkMenuItem" id="menuEditMoveSelectionLayerDown">
+                            <property name="name">menuEditMoveSelectionLayerDown</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="label" translatable="yes">Move Selection Layer Down</property>
+                            <property name="use-underline">True</property>
+                            <signal name="activate" handler="ACTION_MOVE_SELECTION_LAYER_DOWN" swapped="no"/>
+                          </object>
+                        </child>
+                        <child>
                           <object class="GtkSeparatorMenuItem" id="menuitem5">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
@@ -1206,6 +1232,16 @@
                             <property name="label" translatable="yes">New Page at _End</property>
                             <property name="use-underline">True</property>
                             <signal name="activate" handler="ACTION_NEW_PAGE_AT_END" swapped="no"/>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkMenuItem" id="menuJournalDuplicatePage">
+                            <property name="name">menuJournalDuplicatePage</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="label" translatable="yes">Duplicate Page</property>
+                            <property name="use-underline">True</property>
+                            <signal name="activate" handler="ACTION_DUPLICATE_PAGE" swapped="no"/>
                           </object>
                         </child>
                         <child>

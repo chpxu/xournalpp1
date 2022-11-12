@@ -5,25 +5,30 @@ completely by volunteers in their spare time, so any contribution--no matter how
 small--is greatly appreciated. In this file, we'll outline how you can
 contribute to the project.
 
+If you have questions after reading this file, feel free to ask them on our [Gitter channel](https://gitter.im/xournalpp/xournalpp).
+
 ## Overview
 
 Several of the main ways that you can contribute to the project include:
 
-* Updating [the website](https://github.com/xournalpp/xournalpp.github.io)
-  with additional information.
-* Submitting translation improvements via Crowdin (see below).
-* Contributing code changes with pull requests (PRs).
+* Updating the [website](https://github.com/xournalpp/xournalpp.github.io)
+* [Contributing translation improvements](#contributing-translation-improvements)
+* [Contributing code improvements](#contributing-code-improvements)
 
-## Contributing translations
+## Contributing website improvements
+
+For making changes to the website, please go to [xournalpp/xournalpp.github.io](https://github.com/xournalpp/xournalpp.github.io).
+
+## Contributing translation improvements
 
 If you would like to contribute translations, you can submit improvements to
 [our project on Crowdin](https://crowdin.com/project/xournalpp). The Crowdin
 translations are merged back into the main code periodically, after which they
 become available available in the nightly builds.
 
-## Contributing code changes with pull requests (PRs)
+## Contributing code improvements
 
-Xournal++ development primarily occurs on [GitHub at the xournalpp/xournalpp
+Xournal++ development primarily occurs on GitHub at the [xournalpp/xournalpp
 repository](https://github.com/xournalpp/xournalpp). As a contributor, you
 probably have a particular bug or feature that you are interested in working on.
 Before you start, you should first look in the [issue
@@ -32,7 +37,7 @@ reported your bug or has a similar idea for a feature. If not, you should first
 submit a new issue detailing what you are about to do. This will allow you to
 get feedback and ensure that you do not end up duplicating work. You can obtain
 additional help by contacting community members through one of our [official
-communication channels](https://xournalpp.github.io/community/help/).
+communication channels](https://xournalpp.github.io/community/help).
 
 The process for contributing code changes works as follows:
 
@@ -55,10 +60,11 @@ Straub, which is available online for free
 [here](https://git-scm.com/book/en/v2).
 
 You should try to first clone your fork and then compile it manually. The
-instructions for compiling Xournal++ on your operating system can be found at
-[`LinuxBuild.md`](readme/LinuxBuild.md), [`MacBuild.md`](readme/MacBuild.md),
-and [`WindowsBuild.md`](readme/WindowsBuild.md). Once you are set up, you will
-be ready to make code changes.
+instructions for compiling Xournal++ depend on your operating system:
+
+* [`LinuxBuild.md`](readme/LinuxBuild.md)
+* [`MacBuild.md`](readme/MacBuild.md),
+* [`WindowsBuild.md`](readme/WindowsBuild.md)
 
 ### Code conventions and guidelines
 
@@ -106,7 +112,7 @@ Mechanical issues:
 * Although we do not have a strong opinion on code style, we use `clang-format`
   to enforce a _consistent_ code style. Feel free to write your code in whatever
   style you prefer, as long as you run `clang-format` to format your code
-  afterwards. 
+  afterwards.
   * The code style will be automatically checked by the CI system. PRs that are
     not formatted correctly will fail to build; to remedy this, the "Clang
     Format Applied" check will also provide a patch that can be applied to fix
@@ -116,8 +122,7 @@ Mechanical issues:
     and review.
 * **Optimize your code for clarity and readability, but do not be overly
   verbose**.
-  * Use meaningful variable names whenever possible, e.g. use `centerX =
-    (posRect.x2 - posRect.x1) / 2` instead of `a = (r.x2 - r.x1) / 2`.
+  * Use meaningful variable names whenever possible, e.g. use `centerX = (posRect.x2 - posRect.x1) / 2` instead of `a = (r.x2 - r.x1) / 2`.
   * However, if it is clear from the context what the meaning of a variable is,
     prefer using a short name, e.g. `cx = (pos.x2 - pos.x1) / 2`.
   * If the type of a variable in a variable declaration is clear from the
@@ -136,6 +141,8 @@ Mechanical issues:
     to create your own memory managing RAII ref count wrapper. This will also
     reduce the time others must spend to verify your code because it is correct
     by design.
+
+See [the corresponding Wiki article](https://github.com/xournalpp/xournalpp/wiki/Coding-conventions) for more details on coding conventions.
 
 ### Sending your contributions for review
 

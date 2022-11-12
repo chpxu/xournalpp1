@@ -51,7 +51,7 @@ Mask::Mask(cairo_surface_t* target, const Range& extent, double zoom, int dpiSca
     cairo_surface_set_device_offset(surf, xOffset * dpiScaling, yOffset * dpiScaling);
     cairo_surface_set_device_scale(surf, zoom * dpiScaling, zoom * dpiScaling);
 
-    this->cr.reset(cairo_create(surf));
+    this->cr.reset(cairo_create(surf), xoj::util::adopt);
     cairo_surface_destroy(surf);  // surf is now owned by this->cr
 
     IF_DBG_MASKS({
@@ -71,6 +71,12 @@ void Mask::blitTo(cairo_t* targetCr) const {
     cairo_mask_surface(targetCr, cairo_get_target(const_cast<cairo_t*>(cr.get())), 0.0, 0.0);
 }
 
+void Mask::paintTo(cairo_t* targetCr) const {
+    assert(isInitialized());
+    cairo_set_source_surface(targetCr, cairo_get_target(const_cast<cairo_t*>(cr.get())), 0.0, 0.0);
+    cairo_paint(targetCr);
+}
+
 void Mask::wipe() {
     assert(isInitialized());
     xoj::util::CairoSaveGuard saveGuard(cr.get());
@@ -82,6 +88,8 @@ void Mask::wipe() {
         cairo_paint(cr.get());
     });
 }
+
+void Mask::reset() { cr.reset(); }
 
 #ifdef DEBUG_MASKS
 namespace {

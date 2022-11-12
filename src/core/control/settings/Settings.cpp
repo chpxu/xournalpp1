@@ -19,6 +19,7 @@
 #include "control/settings/SettingsEnums.h"         // for InputDeviceTypeOp...
 #include "gui/toolbarMenubar/model/ColorPalette.h"  // for Palette
 #include "model/FormatDefinitions.h"                // for FormatUnits, XOJ_...
+#include "util/Color.h"
 #include "util/PathUtil.h"                          // for getConfigFile
 #include "util/Util.h"                              // for PRECISION_FORMAT_...
 #include "util/i18n.h"                              // for _
@@ -133,6 +134,8 @@ void Settings::loadDefault() {
     this->snapGridTolerance = 0.50;
     this->snapGridSize = DEFAULT_GRID_SIZE;
 
+    this->strokeRecognizerMinSize = 40;
+
     this->touchDrawing = false;
     this->gtkTouchInertialScrolling = true;
 
@@ -140,25 +143,25 @@ void Settings::loadDefault() {
 
     // Eraser
     this->buttonConfig[BUTTON_ERASER] =
-            new ButtonConfig(TOOL_ERASER, Color{0x000000U}, TOOL_SIZE_NONE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
+            new ButtonConfig(TOOL_ERASER, Colors::black, TOOL_SIZE_NONE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
     // Middle button
     this->buttonConfig[BUTTON_MOUSE_MIDDLE] =
-            new ButtonConfig(TOOL_HAND, Color{0x000000U}, TOOL_SIZE_NONE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
+            new ButtonConfig(TOOL_HAND, Colors::black, TOOL_SIZE_NONE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
     // Right button
     this->buttonConfig[BUTTON_MOUSE_RIGHT] =
-            new ButtonConfig(TOOL_NONE, Color{0x000000U}, TOOL_SIZE_NONE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
+            new ButtonConfig(TOOL_NONE, Colors::black, TOOL_SIZE_NONE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
     // Touch
     this->buttonConfig[BUTTON_TOUCH] =
-            new ButtonConfig(TOOL_NONE, Color{0x000000U}, TOOL_SIZE_NONE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
+            new ButtonConfig(TOOL_NONE, Colors::black, TOOL_SIZE_NONE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
     // Default config
     this->buttonConfig[BUTTON_DEFAULT] =
-            new ButtonConfig(TOOL_PEN, Color{0x000000U}, TOOL_SIZE_FINE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
+            new ButtonConfig(TOOL_PEN, Colors::black, TOOL_SIZE_FINE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
     // Pen button 1
     this->buttonConfig[BUTTON_STYLUS_ONE] =
-            new ButtonConfig(TOOL_NONE, Color{0x000000U}, TOOL_SIZE_NONE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
+            new ButtonConfig(TOOL_NONE, Colors::black, TOOL_SIZE_NONE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
     // Pen button 2
     this->buttonConfig[BUTTON_STYLUS_TWO] =
-            new ButtonConfig(TOOL_NONE, Color{0x000000U}, TOOL_SIZE_NONE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
+            new ButtonConfig(TOOL_NONE, Colors::black, TOOL_SIZE_NONE, DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
 
     this->fullscreenHideElements = "mainMenubar";
     this->presentationHideElements = "mainMenubar,sidebarContents";
@@ -171,10 +174,10 @@ void Settings::loadDefault() {
     this->preloadPagesAfter = 5U;
     this->eagerPageCleanup = true;
 
-    this->selectionBorderColor = 0xff0000U;  // red
-    this->selectionMarkerColor = 0x729fcfU;  // light blue
+    this->selectionBorderColor = Colors::red;
+    this->selectionMarkerColor = Colors::xopp_cornflowerblue;
 
-    this->backgroundColor = 0xdcdad5U;
+    this->backgroundColor = Colors::xopp_gainsboro02;
 
     // clang-format off
 	this->pageTemplate = "xoj/template\ncopyLastPageSettings=true\nsize=595.275591x841.889764\nbackgroundType=lined\nbackgroundColor=#ffffff\n";
@@ -488,6 +491,8 @@ void Settings::parseItem(xmlDocPtr doc, xmlNodePtr cur) {
         this->snapGridSize = tempg_ascii_strtod(reinterpret_cast<const char*>(value), nullptr);
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("snapGridTolerance")) == 0) {
         this->snapGridTolerance = tempg_ascii_strtod(reinterpret_cast<const char*>(value), nullptr);
+    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("strokeRecognizerMinSize")) == 0) {
+        this->strokeRecognizerMinSize = tempg_ascii_strtod(reinterpret_cast<const char*>(value), nullptr);
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("touchDrawing")) == 0) {
         this->touchDrawing = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("gtkTouchInertialScrolling")) == 0) {
@@ -955,6 +960,8 @@ void Settings::save() {
     SAVE_DOUBLE_PROP(snapGridTolerance);
     SAVE_DOUBLE_PROP(snapGridSize);
 
+    SAVE_DOUBLE_PROP(strokeRecognizerMinSize);
+
     SAVE_BOOL_PROP(touchDrawing);
     SAVE_BOOL_PROP(gtkTouchInertialScrolling);
     SAVE_BOOL_PROP(pressureGuessing);
@@ -1049,7 +1056,9 @@ void Settings::save() {
     xmlSetProp(xmlFont, reinterpret_cast<const xmlChar*>("size"), reinterpret_cast<const xmlChar*>(sSize));
 
 
-    for (std::map<string, SElement>::value_type p: data) { saveData(root, p.first, p.second); }
+    for (std::map<string, SElement>::value_type p: data) {
+        saveData(root, p.first, p.second);
+    }
 
     xmlSaveFormatFileEnc(filepath.u8string().c_str(), doc, "UTF-8", 1);
     xmlFreeDoc(doc);
@@ -1111,7 +1120,9 @@ void Settings::saveData(xmlNodePtr root, const string& name, SElement& elem) {
         }
     }
 
-    for (std::map<string, SElement>::value_type p: elem.children()) { saveData(xmlNode, p.first, p.second); }
+    for (std::map<string, SElement>::value_type p: elem.children()) {
+        saveData(xmlNode, p.first, p.second);
+    }
 }
 
 // Getter- / Setter
@@ -1360,6 +1371,16 @@ void Settings::setSnapGridSize(double gridSize) {
     this->snapGridSize = gridSize;
     save();
 }
+
+auto Settings::getStrokeRecognizerMinSize() const -> double { return this->strokeRecognizerMinSize; };
+void Settings::setStrokeRecognizerMinSize(double value) {
+    if (this->strokeRecognizerMinSize == value) {
+        return;
+    }
+
+    this->strokeRecognizerMinSize = value;
+    save();
+};
 
 auto Settings::getTouchDrawingEnabled() const -> bool { return this->touchDrawing; }
 

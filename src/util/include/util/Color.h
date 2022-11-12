@@ -133,7 +133,6 @@ float get_color_contrast(Color color1, Color color2);
  *          red might be #ff0000, green, #00ff00, and blue, #0000ff.
  */
 std::string rgb_to_hex_string(Color rgb);
-
 }  // namespace Util
 
 constexpr auto Util::rgb_to_GdkRGBA(Color color) -> GdkRGBA {  //
@@ -203,3 +202,46 @@ constexpr auto Util::GdkRGBA_to_ColorU16(const GdkRGBA& color) -> ColorU16 {
             floatToColorU16(color.blue),   //
             floatToColorU16(color.alpha)};
 }
+
+namespace Colors {
+    /*
+     * A palette of predefined colors. The names are the relevant CSS4 named
+     * color, if exists, else the name of the named color with the smallest
+     * distance from it as an (r, g, b) vector with the prefix "xopp_",
+     * see https://www.w3.org/TR/css-color-4/#named-colors
+     */
+    constexpr Color black{0x000000U};
+    constexpr Color gray{0x808080U};
+    constexpr Color green{0x008000U};
+    constexpr Color lime{0x00ff00U};
+    constexpr Color magenta{0xff00ffU};
+    constexpr Color red{0xff0000U};
+    constexpr Color silver{0xc0c0c0};
+    constexpr Color white{0xffffffU};
+    constexpr Color yellow{0xffff00U};
+    constexpr Color xopp_antiquewhite{0xf8ead3U};
+    constexpr Color xopp_aquamarine{0x80ffc0U};
+    constexpr Color xopp_bisque{0xfee7c4U};
+    constexpr Color xopp_cornflowerblue{0x729fcfU};
+    constexpr Color xopp_darkorange{0xff8000U};
+    constexpr Color xopp_darkslategray{0x434343U};
+    constexpr Color xopp_deeppink{0xff0080U};
+    constexpr Color xopp_deepskyblue{0x00c0ffU};
+    constexpr Color xopp_dodgerblue{0x40a0ffU};
+    constexpr Color xopp_gainsboro{0xdadcdaU};
+    constexpr Color xopp_gainsboro02{0xdcdad5U};
+    constexpr Color xopp_gainsboro03{0xe6d8e4U};
+    constexpr Color xopp_khaki{0xffff80U};
+    constexpr Color xopp_lavender{0xd4e2f0U};
+    constexpr Color xopp_lemonchifon{0xfef8c9U};
+    constexpr Color xopp_lightpink{0xfabebeU};
+    constexpr Color xopp_lightsalmon{0xffc080U};
+    constexpr Color xopp_midnightblue{0x220080U};
+    constexpr Color xopp_palegoldenrod{0xdcf6c1U};
+    constexpr Color xopp_paleturqoise{0xa0e8ffU};
+    constexpr Color xopp_pink{0xffc0d4U};
+    constexpr Color xopp_royalblue{0x3333ccU};
+    constexpr Color xopp_silver{0xbdbdbdU};
+    constexpr Color xopp_snow{0xfafaf9U};
+} // namespace Colors
+
