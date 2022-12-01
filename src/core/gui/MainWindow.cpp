@@ -48,14 +48,10 @@ MainWindow::MainWindow(GladeSearchpath* gladeSearchPath, Control* control):
     this->toolbarWidgets = new GtkWidget*[TOOLBAR_DEFINITIONS_LEN];
     this->toolbarSelectMenu = new MainWindowToolbarMenu(this);
 
-    panedContainerWidget = GTK_WIDGET(get("panelMainContents"));
-    boxContainerWidget = GTK_WIDGET(get("mainContentContainer"));
-    mainContentWidget = GTK_WIDGET(get("boxContents"));
-    sidebarWidget = GTK_WIDGET(get("sidebar"));
-    g_object_ref(panedContainerWidget);
-    g_object_ref(boxContainerWidget);
-    g_object_ref(mainContentWidget);
-    g_object_ref(sidebarWidget);
+    panedContainerWidget.reset(get("panelMainContents"), xoj::util::ref);
+    boxContainerWidget.reset(get("mainContentContainer"), xoj::util::ref);
+    mainContentWidget.reset(get("boxContents"), xoj::util::ref);
+    sidebarWidget.reset(get("sidebar"), xoj::util::ref);
 
     GtkSettings* appSettings = gtk_settings_get_default();
     g_object_set(appSettings, "gtk-application-prefer-dark-theme", control->getSettings()->isDarkTheme(), NULL);
@@ -86,7 +82,7 @@ MainWindow::MainWindow(GladeSearchpath* gladeSearchPath, Control* control):
     // "watch over" all events
     g_signal_connect(this->window, "key-press-event", G_CALLBACK(onKeyPressCallback), this);
 
-    this->toolbar = new ToolMenuHandler(this->control, this, GTK_WINDOW(getWindow()));
+    this->toolbar = std::make_unique<ToolMenuHandler>(this->control, this, GTK_WINDOW(getWindow()));
 
     auto file = gladeSearchPath->findFile("", "toolbar.ini");
 
@@ -208,16 +204,8 @@ MainWindow::~MainWindow() {
     delete this->xournal;
     this->xournal = nullptr;
 
-    delete this->toolbar;
-    this->toolbar = nullptr;
-
     delete scrollHandling;
     scrollHandling = nullptr;
-
-    g_object_unref(panedContainerWidget);
-    g_object_unref(boxContainerWidget);
-    g_object_unref(mainContentWidget);
-    g_object_unref(sidebarWidget);
 }
 
 /**
@@ -333,7 +321,7 @@ void MainWindow::initHideMenu() {
     }
 }
 
-auto MainWindow::getLayout() -> Layout* { return gtk_xournal_get_layout(GTK_WIDGET(this->xournal->getWidget())); }
+auto MainWindow::getLayout() const -> Layout* { return gtk_xournal_get_layout(this->xournal->getWidget()); }
 
 auto cancellable_cancel(GCancellable* cancel) -> bool {
     g_cancellable_cancel(cancel);
@@ -434,7 +422,7 @@ void MainWindow::viewShowToolbar(GtkCheckMenuItem* checkmenuitem, MainWindow* wi
     win->setToolbarVisible(showToolbar);
 }
 
-auto MainWindow::getControl() -> Control* { return control; }
+auto MainWindow::getControl() const -> Control* { return control; }
 
 void MainWindow::updateScrollbarSidebarPosition() {
     GtkWidget* panelMainContents = get("panelMainContents");
@@ -539,24 +527,24 @@ void MainWindow::setSidebarVisible(bool visible) {
         // In this region, we can't use the touchscreen to start horizontal strokes.
         // As such:
         if (!visible) {
-            gtk_container_remove(GTK_CONTAINER(panedContainerWidget), mainContentWidget);
-            gtk_container_remove(GTK_CONTAINER(boxContainerWidget), GTK_WIDGET(panedContainerWidget));
-            gtk_container_add(GTK_CONTAINER(boxContainerWidget), mainContentWidget);
+            gtk_container_remove(GTK_CONTAINER(panedContainerWidget.get()), mainContentWidget.get());
+            gtk_container_remove(GTK_CONTAINER(boxContainerWidget.get()), panedContainerWidget.get());
+            gtk_container_add(GTK_CONTAINER(boxContainerWidget.get()), mainContentWidget.get());
             this->sidebarVisible = false;
         } else {
-            gtk_container_remove(GTK_CONTAINER(boxContainerWidget), mainContentWidget);
-            gtk_container_add(GTK_CONTAINER(panedContainerWidget), mainContentWidget);
-            gtk_container_add(GTK_CONTAINER(boxContainerWidget), GTK_WIDGET(panedContainerWidget));
+            gtk_container_remove(GTK_CONTAINER(boxContainerWidget.get()), mainContentWidget.get());
+            gtk_container_add(GTK_CONTAINER(panedContainerWidget.get()), mainContentWidget.get());
+            gtk_container_add(GTK_CONTAINER(boxContainerWidget.get()), panedContainerWidget.get());
             this->sidebarVisible = true;
 
             updateScrollbarSidebarPosition();
         }
     }
 
-    gtk_widget_set_visible(sidebarWidget, visible);
+    gtk_widget_set_visible(sidebarWidget.get(), visible);
 
     if (visible) {
-        gtk_paned_set_position(GTK_PANED(panedContainerWidget), settings->getSidebarWidth());
+        gtk_paned_set_position(GTK_PANED(panedContainerWidget.get()), settings->getSidebarWidth());
     }
 
     GtkWidget* w = get("menuViewSidebarVisible");
@@ -579,14 +567,14 @@ void MainWindow::setToolbarVisible(bool visible) {
 }
 
 void MainWindow::saveSidebarSize() {
-    this->control->getSettings()->setSidebarWidth(gtk_paned_get_position(GTK_PANED(panedContainerWidget)));
+    this->control->getSettings()->setSidebarWidth(gtk_paned_get_position(GTK_PANED(panedContainerWidget.get())));
 }
 
 void MainWindow::setMaximized(bool maximized) { this->maximized = maximized; }
 
 auto MainWindow::isMaximized() const -> bool { return this->maximized; }
 
-auto MainWindow::getXournal() -> XournalView* { return xournal; }
+auto MainWindow::getXournal() const -> XournalView* { return xournal; }
 
 auto MainWindow::windowStateEventCallback(GtkWidget* window, GdkEventWindowState* event, MainWindow* win) -> bool {
     win->setMaximized(gtk_window_is_maximized(GTK_WINDOW(window)));
@@ -648,14 +636,14 @@ void MainWindow::loadToolbar(ToolbarData* d) {
     this->floatingToolbox->flagRecalculateSizeRequired();
 }
 
-auto MainWindow::getSelectedToolbar() -> ToolbarData* { return this->selectedToolbar; }
+auto MainWindow::getSelectedToolbar() const -> ToolbarData* { return this->selectedToolbar; }
 
-auto MainWindow::getToolbarWidgets(int& length) -> GtkWidget** {
+auto MainWindow::getToolbarWidgets(int& length) const -> GtkWidget** {
     length = TOOLBAR_DEFINITIONS_LEN;
     return this->toolbarWidgets;
 }
 
-auto MainWindow::getToolbarName(GtkToolbar* toolbar) -> const char* {
+auto MainWindow::getToolbarName(GtkToolbar* toolbar) const -> const char* {
     for (int i = 0; i < TOOLBAR_DEFINITIONS_LEN; i++) {
         if (static_cast<void*>(this->toolbarWidgets[i]) == static_cast<void*>(toolbar)) {
             return TOOLBAR_DEFINITIONS[i].propName;
@@ -679,7 +667,7 @@ void MainWindow::createToolbarAndMenu() {
     GtkMenuShell* menubar = GTK_MENU_SHELL(get("menuViewToolbar"));
     g_return_if_fail(menubar != nullptr);
 
-    toolbarSelectMenu->updateToolbarMenu(menubar, control->getSettings(), toolbar);
+    toolbarSelectMenu->updateToolbarMenu(menubar, control->getSettings(), toolbar.get());
 
     ToolbarData* td = toolbarSelectMenu->getSelectedToolbar();
     if (td) {
@@ -696,7 +684,7 @@ void MainWindow::createToolbarAndMenu() {
 
 void MainWindow::setFontButtonFont(XojFont& font) { toolbar->setFontButtonFont(font); }
 
-auto MainWindow::getFontButtonFont() -> XojFont { return toolbar->getFontButtonFont(); }
+auto MainWindow::getFontButtonFont() const -> XojFont { return toolbar->getFontButtonFont(); }
 
 void MainWindow::updatePageNumbers(size_t page, size_t pagecount, size_t pdfpage) {
     SpinPageAdapter* spinPageNo = getSpinPageNo();
@@ -751,11 +739,11 @@ void MainWindow::setUndoDescription(const string& description) { toolbar->setUnd
 
 void MainWindow::setRedoDescription(const string& description) { toolbar->setRedoDescription(description); }
 
-auto MainWindow::getSpinPageNo() -> SpinPageAdapter* { return toolbar->getPageSpinner(); }
+auto MainWindow::getSpinPageNo() const -> SpinPageAdapter* { return toolbar->getPageSpinner(); }
 
-auto MainWindow::getToolbarModel() -> ToolbarModel* { return this->toolbar->getModel(); }
+auto MainWindow::getToolbarModel() const -> ToolbarModel* { return this->toolbar->getModel(); }
 
-auto MainWindow::getToolMenuHandler() -> ToolMenuHandler* { return this->toolbar; }
+auto MainWindow::getToolMenuHandler() const -> ToolMenuHandler* { return this->toolbar.get(); }
 
 void MainWindow::disableAudioPlaybackButtons() {
     setAudioPlaybackPaused(false);
@@ -776,4 +764,4 @@ void MainWindow::loadMainCSS(GladeSearchpath* gladeSearchPath, const gchar* cssF
     g_object_unref(provider);
 }
 
-PdfFloatingToolbox* MainWindow::getPdfToolbox() { return this->pdfFloatingToolBox.get(); }
+PdfFloatingToolbox* MainWindow::getPdfToolbox() const { return this->pdfFloatingToolBox.get(); }

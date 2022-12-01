@@ -400,8 +400,7 @@ void Control::updatePageNumbers(size_t page, size_t pdfPage) {
     fireEnableAction(ACTION_GOTO_NEXT_ANNOTATED_PAGE, current < count - 1);
 }
 
-void Control::actionPerformed(ActionType type, ActionGroup group, GdkEvent* event, GtkMenuItem* menuitem,
-                              GtkToolButton* toolbutton, bool enabled) {
+void Control::actionPerformed(ActionType type, ActionGroup group, GtkToolButton* toolbutton, bool enabled) {
     if (layerController->actionPerformed(type)) {
         return;
     }
@@ -3046,7 +3045,7 @@ void Control::setClipboardHandlerSelection(EditSelection* selection) {
     }
 }
 
-void Control::setCopyPasteEnabled(bool enabled) { this->clipboardHandler->setCopyPasteEnabled(enabled); }
+void Control::setCopyCutEnabled(bool enabled) { this->clipboardHandler->setCopyCutEnabled(enabled); }
 
 void Control::setFill(bool fill) {
     EditSelection* sel = nullptr;
