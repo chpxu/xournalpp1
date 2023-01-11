@@ -2,8 +2,8 @@
 
 #include <algorithm>  // for max, min
 #include <cassert>    // for assert
-#include <cfloat>     // for DBL_EPSILON
 #include <cmath>      // for ceil, pow, abs
+#include <limits>     // for numeric_limits
 #include <memory>     // for unique_ptr, mak...
 #include <utility>    // for move
 #include <vector>     // for vector
@@ -15,6 +15,7 @@
 #include "control/ToolHandler.h"                      // for ToolHandler
 #include "control/layer/LayerController.h"            // for LayerController
 #include "control/settings/Settings.h"                // for Settings
+#include "control/settings/SettingsEnums.h"           // for EmptyLastPageAppendType
 #include "control/shaperecognizer/ShapeRecognizer.h"  // for ShapeRecognizer
 #include "control/tools/InputHandler.h"               // for InputHandler::P...
 #include "control/tools/SnapToGridInputHandler.h"     // for SnapToGridInput...
@@ -23,6 +24,7 @@
 #include "gui/PageView.h"                        // for XojPageView
 #include "gui/XournalView.h"                     // for XournalView
 #include "gui/inputdevices/PositionInputData.h"  // for PositionInputData
+#include "model/Document.h"                      // for Document
 #include "model/Layer.h"                         // for Layer
 #include "model/LineStyle.h"                     // for LineStyle
 #include "model/Stroke.h"                        // for Stroke, STROKE_...
@@ -134,7 +136,7 @@ void StrokeHandler::paintTo(const Point& point) {
                 stroke->setLastPressure(std::max(endPoint.z, point.z) * stroke->getWidth());
             } else {
                 if (const double widthDelta = (point.z - endPoint.z) * stroke->getWidth();
-                    - widthDelta > MAX_WIDTH_VARIATION || widthDelta > MAX_WIDTH_VARIATION) {
+                    -widthDelta > MAX_WIDTH_VARIATION || widthDelta > MAX_WIDTH_VARIATION) {
                     /**
                      * If the width variation is to big, decompose into shorter segments.
                      * Those segments can not be shorter than PIXEL_MOTION_THRESHOLD
@@ -261,16 +263,28 @@ void StrokeHandler::onButtonReleaseEvent(const PositionInputData& pos, double zo
 
     stroke->freeUnusedPointItems();
 
-    control->getLayerController()->ensureLayerExists(page);
-
     Layer* layer = page->getSelectedLayer();
 
     UndoRedoHandler* undo = control->getUndoRedoHandler();
-
     undo->addUndoAction(std::make_unique<InsertUndoAction>(page, layer, stroke.get()));
 
-    ToolHandler* h = control->getToolHandler();
+    if (settings->getEmptyLastPageAppend() == EmptyLastPageAppendType::OnDrawOfLastPage) {
+        auto* doc = control->getDocument();
+        doc->lock();
+        auto pdfPageCount = doc->getPdfPageCount();
+        doc->unlock();
+        if (pdfPageCount == 0) {
+            auto currentPage = control->getCurrentPageNo();
+            doc->lock();
+            auto lastPage = doc->getPageCount() - 1;
+            doc->unlock();
+            if (currentPage == lastPage) {
+                control->insertNewPage(currentPage + 1, false);
+            }
+        }
+    }
 
+    ToolHandler* h = control->getToolHandler();
     if (h->getDrawingType() == DRAWING_TYPE_STROKE_RECOGNIZER) {
         ShapeRecognizer reco;
 
@@ -312,10 +326,10 @@ void StrokeHandler::strokeRecognizerDetected(Stroke* recognized, Layer* layer) {
         Point belowRight = Point(snappedBounds.x + snappedBounds.width, snappedBounds.y + snappedBounds.height);
         Point belowRightSnapped = snappingHandler.snapToGrid(belowRight, false);
 
-        double fx = (std::abs(snappedBounds.width) > DBL_EPSILON) ?
+        double fx = (std::abs(snappedBounds.width) > std::numeric_limits<double>::epsilon()) ?
                             (belowRightSnapped.x - topLeftSnapped.x) / snappedBounds.width :
                             1;
-        double fy = (std::abs(snappedBounds.height) > DBL_EPSILON) ?
+        double fy = (std::abs(snappedBounds.height) > std::numeric_limits<double>::epsilon()) ?
                             (belowRightSnapped.y - topLeftSnapped.y) / snappedBounds.height :
                             1;
         recognized->scale(topLeftSnapped.x, topLeftSnapped.y, fx, fy, 0, false);
